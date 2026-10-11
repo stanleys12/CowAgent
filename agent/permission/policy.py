@@ -599,6 +599,7 @@ def check_tool_call(
     cwd: Optional[str] = None,
     write_roots: Optional[Iterable[str]] = None,
     protected_paths: Optional[Iterable[str]] = None,
+    guest: bool = False,
 ) -> Decision:
     """Decide whether ``tool_name`` may run with ``arguments`` under ``mode``.
 
@@ -610,17 +611,24 @@ def check_tool_call(
         write_roots: directories writes are confined to in workspace-write mode.
             ``cwd`` and the system temp dir are always included.
         protected_paths: files workspace-write refuses even inside the roots.
+        guest: the call comes from a group member who is not an owner. On top
+            of ``mode``, only web search and reads inside ``cwd`` are allowed.
 
     Returns:
         A :class:`Decision` whose ``reason`` is written for the model: what was
         refused, and what to do instead.
     """
+    tool_name = (tool_name or "").strip()
+    args = arguments if isinstance(arguments, dict) else {}
+
+    if guest:
+        decision = _check_guest(tool_name, args, cwd, protected_paths)
+        if not decision.allowed:
+            return decision
+
     mode = normalize_mode(mode)
     if mode == FULL_ACCESS:
         return ALLOW
-
-    tool_name = (tool_name or "").strip()
-    args = arguments if isinstance(arguments, dict) else {}
 
     if mode == READ_ONLY:
         return _check_read_only(tool_name, args)
@@ -690,6 +698,38 @@ def _check_workspace_write(
     if tool_name == "bash":
         return _check_bash_workspace_write(args, cwd, roots, protected)
 
+    return ALLOW
+
+
+_GUEST_TOOLS = frozenset({"web_search", "time"})
+
+# search_files is left out: it greps a whole directory, and only the directory
+# itself would be checked against protected_paths.
+_GUEST_READ_TOOLS = frozenset({"read", "ls"})
+
+
+def _deny_guest(what: str) -> Decision:
+    return Decision(
+        False,
+        f"Blocked for this group member: {what}\n\nOnly the owner of this bot can "
+        f"use it in a group chat. Do not retry: tell the user it is not available "
+        f"to them.",
+    )
+
+
+def _check_guest(
+    tool_name: str, args: Dict[str, Any], cwd: Optional[str], protected_paths: Optional[Iterable[str]]
+) -> Decision:
+    if tool_name in _GUEST_TOOLS:
+        return ALLOW
+    if tool_name not in _GUEST_READ_TOOLS:
+        return _deny_guest(f"{tool_name} is restricted to the owner.")
+
+    path = str(args.get("path") or args.get("location") or ".")
+    if _is_protected(path, _normalize_protected(protected_paths), cwd):
+        return _deny_guest(f"'{path}' holds config or credentials, so {tool_name} did not run.")
+    if not _inside_roots(path, [os.path.realpath(cwd)] if cwd else [], cwd):
+        return _deny_guest(f"'{path}' is outside the workspace, so {tool_name} did not run.")
     return ALLOW
 
 

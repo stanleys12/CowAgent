@@ -112,6 +112,7 @@ Agent 的系统工作空间默认位于 `~/cow` 目录，用于存储系统提�
 | `agent_max_context_turns` | 最大上下文记忆轮次 | `20` |
 | `agent_max_steps` | 单次任务最大决策步数 | `20` |
 | `agent_permission_mode` | 全局默认权限，新会话沿用：`read-only` / `workspace-write` / `full-access` | `full-access` |
+| `agent_owner_ids` | Bot 所有者的发送者 ID（如飞书 `open_id`，即日志中消息的 `actual_user_id`）。设置后，群聊中的其他成员只能使用网页搜索和读取工作目录内的文件，命令执行、发送、定时任务、记忆、网页抓取和 MCP 工具都会被拒绝。这只限制工具：群聊共用同一会话和系统提示词，成员仍可询问其中已有的内容（包括记忆和之前的工具输出），工作目录内的文件（如记忆笔记）仍可读取。为空时所有人都视为所有者 | `[]` |
 | `enable_thinking` | 是否启用深度思考模式 | `false` |
 | `knowledge` | 是否启用个人知识库 | `true` |
 | `self_evolution_enabled` | 是否启用自主进化 | `false` |

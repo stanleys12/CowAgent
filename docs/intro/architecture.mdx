@@ -112,6 +112,7 @@ Configure Agent mode parameters in `config.json`:
 | `agent_max_context_turns` | Max context turns | `20` |
 | `agent_max_steps` | Max decision steps per task | `20` |
 | `agent_permission_mode` | Global default permission inherited by new sessions: `read-only` / `workspace-write` / `full-access` | `full-access` |
+| `agent_owner_ids` | Sender ids of the bot's owners (e.g. Feishu `open_id`, shown in the log as the message's `actual_user_id`). When set, other members of a group chat can only use web search and read files in the working directory; shell, send, scheduler, memory, web fetch and MCP tools are refused. This limits tools only: the group shares one conversation and system prompt, so a member can still ask about anything already in them, including memory and earlier tool output; files in the working directory, such as memory notes, stay readable. Empty means everyone is an owner | `[]` |
 | `enable_thinking` | Enable deep-thinking mode | `false` |
 | `knowledge` | Enable personal knowledge base | `true` |
 | `self_evolution_enabled` | Enable Self-Evolution (on by default for new installs) | `false` |

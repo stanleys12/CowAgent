@@ -255,6 +255,7 @@ class AgentStreamExecutor:
             cancel_event=None,
             steer_inbox=None,
             allow_empty_response: bool = False,
+            guest: bool = False,
     ):
         """
         Initialize stream executor
@@ -278,6 +279,8 @@ class AgentStreamExecutor:
                 outcome and is returned as-is instead of being replaced with
                 fallback text. Set for runs with no human waiting on a reply
                 (scheduled tasks), where silence can be the intended result.
+            guest: The run answers a group member who is not an owner, so tool
+                calls go through the guest policy in check_tool_call.
         """
         self.agent = agent
         self.model = model
@@ -290,6 +293,7 @@ class AgentStreamExecutor:
         self.cancel_event = cancel_event
         self.steer_inbox = steer_inbox
         self.allow_empty_response = allow_empty_response
+        self.guest = guest
 
         # Message history - use provided messages or create new list
         self.messages = messages if messages is not None else []
@@ -2396,7 +2400,7 @@ class AgentStreamExecutor:
 
         Never raises: a broken permission check must not take the conversation
         down with it, so an error here falls through to the historical
-        unrestricted behavior.
+        unrestricted behavior. A guest's call is refused instead.
         """
         agent = self.agent
         if agent is None:
@@ -2405,7 +2409,7 @@ class AgentStreamExecutor:
             from agent.permission import FULL_ACCESS, check_tool_call
 
             mode = agent.effective_permission_mode()
-            if mode == FULL_ACCESS:
+            if mode == FULL_ACCESS and not self.guest:
                 return None
             decision = check_tool_call(
                 mode,
@@ -2414,10 +2418,13 @@ class AgentStreamExecutor:
                 cwd=agent.effective_cwd(),
                 write_roots=agent.write_roots(),
                 protected_paths=agent.protected_paths(),
+                guest=self.guest,
             )
             return None if decision.allowed else decision.reason
         except Exception as e:
             logger.warning(f"[Permission] Check skipped for {tool_name}: {e}")
+            if self.guest:
+                return f"Permission check failed, so {tool_name} did not run."
             return None
 
     def _build_tool_not_found_message(self, tool_name: str) -> str:

@@ -1226,6 +1226,18 @@ class AgentBridge:
             )
 
     @staticmethod
+    def _is_guest(context: Context = None) -> bool:
+        # Off until owners are configured; then an unidentifiable sender is a guest.
+        owners = conf().get("agent_owner_ids") or []
+        if not owners or context is None or not context.get("isgroup"):
+            return False
+        if context.get("is_scheduled_task"):
+            # Scheduled runs carry no sender; guests are refused the scheduler tool.
+            return False
+        sender = getattr(context.get("msg"), "actual_user_id", None)
+        return not sender or str(sender) not in {str(o) for o in owners}
+
+    @staticmethod
     def _runtime_key(agent_id: str, session_id: str) -> Tuple[str, str]:
         return agent_id, session_id
 
@@ -1768,6 +1780,7 @@ class AgentBridge:
                     # the scheduler sends no message at all.
                     allow_empty_response=bool(context and context.get("is_scheduled_task")),
                     on_executor=writer.bind if writer is not None else None,
+                    guest=self._is_guest(context),
                 )
             except Exception:
                 # Keep the steps finished before the failure.

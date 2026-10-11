@@ -317,6 +317,11 @@ available_setting = {
     # client (COW_DESKTOP=1 with no config.json yet) is tightened to the stricter
     # workspace-write in load_config(); docker/source stay at full-access.
     "agent_permission_mode": "full-access",
+    # Sender ids (e.g. Feishu open_id) of the bot's owners. When set, other
+    # members of a group chat can only use web lookups and read the workspace;
+    # shell, send, scheduler, memory and MCP tools are refused for them. Empty
+    # means everyone is treated as an owner, as before.
+    "agent_owner_ids": [],
     # In-process sub agents: the Agent hands a self-contained task to a
     # short-lived worker with its own context, and gets back only the result.
     # Set enabled to false to withhold the subagent tool entirely.
